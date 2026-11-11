@@ -1,0 +1,13 @@
+{
+    "display_name": "Emulator",
+    "exe_name": "emulator-fx",
+    "cli_exe_name": "emulator-fx-cli",
+    "app_id": "io.github.felixharder10_glitch.EmulatorFx",
+    "user_data_dir": "emulator-fx",
+    "discord_app_id": "",
+    "repo_url": "https://github.com/felixharder10-glitch/Emulator",
+    "upstream_name": "Fritchii",
+    "upstream_repo": "https://github.com/Frizti/Fritchii.git",
+    "upstream_branch": "nx2",
+    "upstream_commit": "f66ea633db6058efe31a9611718019e5bd1667eb"
+}

@@ -1,0 +1,74 @@
+{
+    "_comment": "Rules for tools/project/rebrand.py. Placeholders @key@ come from project/project.json (@repo_slug@ and @ident_upper@ are derived). Order: remove, renames, edits, inserts, replacements, icons.",
+
+    "skip_dirs": [".git", ".cache", "build", "build-*", "externals", "LICENSES", ".reuse", "project", "tools/project"],
+
+    "line_exceptions": ["SPDX-FileCopyrightText", "Copyright"],
+
+    "file_exceptions": [
+        "README.md",
+        "CHANGELOG.md",
+        "AGENTS.md",
+        "docs/Maintaining.md",
+        "docs/STARFOX_*.md",
+        "docs/kirby-white-world.md",
+        "docs/shader-sweep-all-games-*.md"
+    ],
+
+    "remove": [
+        "dist/branding",
+        "tools/Generate-LichiiIcons.ps1"
+    ],
+
+    "renames": [
+        {"from": "io.github.zortos293.lichii", "to": "@app_id@"},
+        {"from": "lichii", "to": "@exe_name@"}
+    ],
+
+    "edits": [
+        {"file": "CMakeModules/GenerateSCMRev.cmake",
+         "from": "set(REPO_NAME \"Lichii Nightly\")",
+         "to": "set(REPO_NAME \"${EMULATOR_FX_VERSION_STRING} Nightly\")"},
+        {"file": "CMakeModules/GenerateSCMRev.cmake",
+         "from": "set(REPO_NAME \"Lichii\")",
+         "to": "set(REPO_NAME \"${EMULATOR_FX_VERSION_STRING}\")"},
+        {"file": "src/common/fs/fs_paths.h",
+         "from": "#define EDEN_DIR \"eden\"",
+         "to": "#define EDEN_DIR \"@user_data_dir@\""},
+        {"file": "src/yuzu/main.cpp",
+         "from": "QCoreApplication::setOrganizationName(QStringLiteral(\"eden\"));",
+         "to": "QCoreApplication::setOrganizationName(QStringLiteral(\"@user_data_dir@\"));"},
+        {"file": "src/CMakeLists.txt",
+         "from": "set_target_properties(yuzu-cmd PROPERTIES OUTPUT_NAME \"eden-cli\")",
+         "to": "set_target_properties(yuzu-cmd PROPERTIES OUTPUT_NAME \"@cli_exe_name@\")"},
+        {"file": "src/qt_common/discord/discord_impl.cpp",
+         "from": "Discord_Initialize(\"1397286652128264252\", &handlers, 1, nullptr);",
+         "to": "Discord_Initialize(EMULATOR_FX_DISCORD_APP_ID, &handlers, 1, nullptr);"},
+        {"file": "src/qt_common/qt_common.cpp",
+         "from": "fmt::format(\"Lichii Development Build | {}-{}\", branch_name, description);",
+         "to": "fmt::format(\"{} | {}-{}\", Common::g_build_name, branch_name, description);"},
+        {"file": "src/yuzu/bootmanager.cpp",
+         "from": "setWindowTitle(QStringLiteral(\"Lichii %1 | %2-%3\")",
+         "to": "setWindowTitle(QStringLiteral(\"%1 | %2-%3\")"}
+    ],
+
+    "inserts": [
+        {"file": "CMakeLists.txt", "after": "project(yuzu)", "line": "include(${CMAKE_SOURCE_DIR}/project/emulator.cmake)"}
+    ],
+
+    "replacements": [
+        {"from": "io.github.zortos293.lichii", "to": "@app_id@"},
+        {"from": "https://github.com/zortos293/lichii.git", "to": "@repo_url@.git"},
+        {"from": "https://github.com/zortos293/lichii", "to": "@repo_url@"},
+        {"from": "zortos293/Lichii", "to": "@repo_slug@"},
+        {"from": "LICHII", "to": "@ident_upper@"},
+        {"from": "Lichii", "to": "@display_name@"},
+        {"from": "lichii", "to": "@exe_name@"}
+    ],
+
+    "icons": [
+        {"from": "project/branding/icon.ico", "to": "dist/@exe_name@.ico"},
+        {"from": "project/branding/icon-256.png", "to": "dist/@exe_name@.png"},
+        {"from": "project/branding/icon.icns", "to": "dist/@exe_name@.icns"}
+    ]
+}
