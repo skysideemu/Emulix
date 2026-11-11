@@ -75,6 +75,9 @@
         ]
     ],
     "removed": [
+        ".forgejo",
+        ".github/workflows/label-issues.yml",
+        ".github/workflows/release-binaries.yml",
         "dist/branding",
         "tools/Generate-LichiiIcons.ps1"
     ],
