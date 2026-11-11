@@ -6,7 +6,7 @@ Keep comments to a reasonable level. Do not overexplain or add/remove comments f
 
 ## Game bug reports
 
-Users report game bugs with Lichii logs (`eden_log.txt`, `eden_log.txt.old`). Each `Booting game: <program id>` line starts a session; the build is on the first line (`Lichii Version: ... | nx2-<sha>`). Known program ids:
+Users report game bugs with Emulator logs (`eden_log.txt`, `eden_log.txt.old`). Each `Booting game: <program id>` line starts a session; the build is on the first line (`Emulator Version: ... | nx2-<sha>`). Known program ids:
 
 | Program id | Game |
 |---|---|
@@ -30,18 +30,9 @@ Users report game bugs with Lichii logs (`eden_log.txt`, `eden_log.txt.old`). Ea
 
 Add ids here when a report identifies a new game.
 
-## Before writing a fix
-
-Lichii is a fork of [Eglantine](https://github.com/Djihads80/Eglantine). Do not guess, and do not rewrite a fix upstream already has.
-
-1. `git remote add upstream https://github.com/Djihads80/Eglantine.git && git fetch upstream`.
-2. Check `upstream/nx2`, open and closed PRs, unmerged branches, and issues for the game and symptom (`gh pr list -R Djihads80/Eglantine --state all`, `gh issue list -R Djihads80/Eglantine --state all`, `gh pr diff <n>`). Read the diffs, not only the titles.
-3. If nx2 is behind `upstream/nx2`, merge upstream first. Port an existing upstream fix before writing a new one, and cite its PR or commit.
-4. Write a new fix only when nothing upstream addresses the root cause the log shows.
-
 ## Debugging tools
 
-Use these before guessing. All are off unless the variable is set; pass them as the env argument of `build-fix.sh`. Read them from the log at `*:Info` unless noted.
+Use these before guessing. All are off unless the variable is set; set them in the environment before starting the build under test (see "Builds" below). Read them from the log at `*:Info` unless noted.
 
 | Symptom | Tool | Output |
 |---|---|---|
@@ -55,19 +46,44 @@ Use these before guessing. All are off unless the variable is set; pass them as 
 | Split GPU thread races | `EDEN_NX2_SPLIT_CHECK=1` | Reports scheduler use from the wrong thread. |
 | Upscaler and DLSS contracts | `EDEN_NX2_DLSS_CONTRACT_TRACE=1` | Inputs and outputs of replaced upscaler networks. |
 | Service calls | `EDEN_NX2_IPC_TRACE=1` | IPC command trace. |
-| Host crash (log just stops) | Windows minidump in `%LOCALAPPDATA%\CrashDumps\lichii.exe.<pid>.dmp` | Read the exception and stack with the `minidump` Python package, then symbolize with `llvm-symbolizer --obj=lichii.exe --inlines --relative-address <offset>` next to the build's `lichii.pdb`. |
+| Host crash (log just stops) | Windows minidump in `%LOCALAPPDATA%\CrashDumps\emulator-fx.exe.<pid>.dmp` | Read the exception and stack with the `minidump` Python package, then symbolize with `llvm-symbolizer --obj=emulator-fx.exe --inlines --relative-address <offset>` next to the build's `emulator-fx.pdb`. |
 
-## How work is split
+<!-- emulator-fx:begin -->
+## Emulator project rules
 
-- One subagent per game, all running in parallel.
-- Small research (upstream PR and issue surveys, log reading): a cheap model, DeepSeek V4.1 Flash at max reasoning when its endpoint is available.
-- Hard fixes (emulation, shaders, GPU): GPT-6 Astra at high reasoning.
-- When a GPT-6 Astra subagent can't find the cause, switch that subagent to Claude Opus 5.5 at high reasoning.
-- The main thread (Opus) orchestrates and reviews.
+This tree is "Emulator", a standalone fork of [Fritchii](https://github.com/Frizti/Fritchii)
+branch `nx2` (fork chain yuzu -> Eden -> Eglantine -> Lichii -> Fritchii). The text above this
+section is upstream's, adjusted by `tools/project/rebrand.py`; this section comes from
+`project/AGENTS.project.md`. Edit it there, never here.
 
-## Builds
+- Upstream files change only through `tools/project/rebrand.py` and its rules in
+  `project/rebrand-rules.json`. Our own code lives in our own files (`project/`,
+  `tools/project/`, `scripts/`, `docs/Maintaining.md`, `docs/oot/`).
+- Exception: a fix in emulation code (`src/core`, `src/video_core`, `src/dynarmic`,
+  `src/shader_recompiler`, `src/audio_core`) is a hand edit. One commit per fix, a unit test where
+  possible, and an entry under "Local patches" in `docs/Maintaining.md`.
+- Do not rename internal identifiers (`YUZU_*` options, the CMake project `yuzu`, `EDEN_NX2_*`
+  variables); they keep upstream merges clean.
+- Keep SPDX and copyright headers, `LICENSES/` and `.reuse/dep5` as they are. New files get an
+  SPDX header (GPL-3.0-or-later).
+- No keys, firmware, game files, or links to them.
+- Never push, publish tags or rewrite published history without the owner's okay.
 
-- Cloud machines build with clang and Ninja for compile and unit-test checks.
-- The build the owner tests runs on the owner's Windows PC (DESKTOP-4UD89UT, Ryzen 9 5900X), built with clang using 12 jobs (`cmake --build <dir> --parallel 12`).
-- On the PC the toolchain is clang-cl (LLVM 22) with the VS 2022 SDK, Qt 6.8.3 in `C:/lx/qt`, Ninja and sccache. Source is `C:/lx/src`, the persistent build dir is `C:/lx/build`, and `C:/lx/configure.sh` holds the configure flags. Build and package a fix with one command: `bash C:/lx/build-fix.sh <branch> <build-name> "<Game> - <fix>" ["ENV=VAL ..."] ["log filter"]`.
-- Every fix gets its own debug build on that PC in `C:\Users\Zortos\.capy\work\lichii-debug\<build>\` and a desktop shortcut `Lichii Debug - <Game> - <fix>` that launches it with the owner's existing user data and keeps the log next to the build, so the owner can run it and send the log back.
+### Before writing a fix
+
+1. Check upstream first: `Frizti/Fritchii` and `Djihads80/Eglantine`, branch `nx2`, open and closed
+   PRs, unmerged branches and issues (`gh pr list -R <repo> --state all`, `gh pr diff <n>`).
+2. If upstream has it: take it with `tools/project/sync-upstream.ps1` or port it and cite the source
+   in the commit message.
+3. Otherwise write the smallest fix of the root cause the logs show. No special cases by program id
+   when a generally correct fix exists.
+
+### Builds
+
+- The shipping target is Windows x64: `pwsh scripts/build-windows.ps1 [-Tests] [-Clean]`
+  -> `build\windows\bin\emulator-fx.exe` and `emulator-fx-cli.exe`.
+- User data lives in `%APPDATA%\emulator-fx` (or `user\` next to the exe for a portable install);
+  the log is `log\eden_log.txt` there.
+- The owner tests on his Windows PC and sends logs back. Tell him exactly which build to start,
+  with which environment variables, and what to play.
+<!-- emulator-fx:end -->
