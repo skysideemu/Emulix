@@ -193,8 +193,8 @@ int main(int argc, char* argv[]) {
 #endif
 
     // Init settings params
-    QCoreApplication::setOrganizationName(QStringLiteral("eden"));
-    QCoreApplication::setApplicationName(QStringLiteral("Lichii"));
+    QCoreApplication::setOrganizationName(QStringLiteral("emulator-fx"));
+    QCoreApplication::setApplicationName(QStringLiteral("Emulator"));
 
     // Increases the maximum open file limit.
     // TODO: This should be common to all frontends.
@@ -246,7 +246,7 @@ int main(int argc, char* argv[]) {
 
     // Fix the Wayland appId. This needs to match the name of the .desktop file without the .desktop
     // suffix.
-    QGuiApplication::setDesktopFileName(QStringLiteral("io.github.zortos293.lichii"));
+    QGuiApplication::setDesktopFileName(QStringLiteral("io.github.felixharder10_glitch.EmulatorFx"));
 #endif
 
     auto rounding_policy = GetHighDpiRoundingPolicy();

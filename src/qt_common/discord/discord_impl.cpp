@@ -31,7 +31,7 @@ DiscordImpl::DiscordImpl(Core::System& system_) : system{system_} {
     DiscordEventHandlers handlers{};
     // The number is the client ID for Eden, it's used for images and the
     // application name
-    Discord_Initialize("1397286652128264252", &handlers, 1, nullptr);
+    Discord_Initialize(EMULATOR_FX_DISCORD_APP_ID, &handlers, 1, nullptr);
 }
 
 DiscordImpl::~DiscordImpl() {
@@ -69,7 +69,7 @@ std::string DiscordImpl::GetGameString(const std::string& title) {
     return icon_name;
 }
 
-static constexpr char DEFAULT_DISCORD_TEXT[] = "Lichii is an emulator for the Nintendo Switch";
+static constexpr char DEFAULT_DISCORD_TEXT[] = "Emulator is an emulator for the Nintendo Switch";
 static constexpr char DEFAULT_DISCORD_IMAGE[] =
     "https://git.eden-emu.dev/eden-emu/eden/raw/branch/master/dist/qt_themes/default/icons/256x256/"
     "eden.png";
