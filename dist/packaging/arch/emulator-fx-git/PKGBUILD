@@ -5,7 +5,7 @@ pkgver=0.r0.g0000000
 pkgrel=1
 pkgdesc='Nintendo Switch emulator (development branch)'
 arch=('x86_64')
-url='https://github.com/felixharder10-glitch/Emulix'
+url='https://github.com/skysideemu/Emulix'
 license=('GPL-3.0-or-later')
 depends=(
   'enet'
@@ -43,7 +43,7 @@ optdepends=(
 )
 provides=('emulator-fx')
 conflicts=('emulator-fx')
-source=("emulator-fx::git+https://github.com/felixharder10-glitch/Emulix.git#branch=nx2")
+source=("emulator-fx::git+https://github.com/skysideemu/Emulix.git#branch=nx2")
 sha256sums=('SKIP')
 
 pkgver() {

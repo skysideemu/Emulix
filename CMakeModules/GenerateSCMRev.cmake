@@ -37,11 +37,11 @@ set(GIT_DESC ${BUILD_VERSION})
 
 # Generate cpp with Git revision from template
 
-set(BUILD_AUTO_UPDATE_STABLE_REPO "felixharder10-glitch/Emulix")
+set(BUILD_AUTO_UPDATE_STABLE_REPO "skysideemu/Emulix")
 set(BUILD_AUTO_UPDATE_STABLE_API "api.github.com")
-set(BUILD_AUTO_UPDATE_API_PATH "/repos/felixharder10-glitch/Emulix/releases?per_page=100")
+set(BUILD_AUTO_UPDATE_API_PATH "/repos/skysideemu/Emulix/releases?per_page=100")
 set(BUILD_AUTO_UPDATE_WEBSITE "https://github.com")
-set(BUILD_AUTO_UPDATE_REPO "felixharder10-glitch/Emulix")
+set(BUILD_AUTO_UPDATE_REPO "skysideemu/Emulix")
 if (NIGHTLY_BUILD)
     set(REPO_NAME "${EMULATOR_FX_VERSION_STRING} Nightly")
 else()

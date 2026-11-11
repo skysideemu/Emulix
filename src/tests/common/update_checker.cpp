@@ -18,9 +18,9 @@ Common::Net::Release MakeRelease(std::string tag, std::string filename) {
         {"prerelease", true},
         {"assets",
          {{{"browser_download_url",
-            "https://github.com/felixharder10-glitch/Emulix/releases/download/" + tag + "/" + filename}}}},
+            "https://github.com/skysideemu/Emulix/releases/download/" + tag + "/" + filename}}}},
     };
-    return Common::Net::Release::FromJson(json, "https://api.github.com", "felixharder10-glitch/Emulix")
+    return Common::Net::Release::FromJson(json, "https://api.github.com", "skysideemu/Emulix")
         .value();
 }
 
@@ -48,7 +48,7 @@ TEST_CASE("Emulator ignores dev builds and malformed release tags", "[updater]")
     CHECK_FALSE(UpdateChecker::SelectUpdate(releases, tag, "windows-x86_64"));
     auto invalid = releases;
     invalid[0].tag = tag;
-    invalid[0].assets = {"https://github.com/felixharder10-glitch/Emulix/releases/download/" + tag +
+    invalid[0].assets = {"https://github.com/skysideemu/Emulix/releases/download/" + tag +
                          "/emulator-fx-windows-x86_64.zip"};
     CHECK_FALSE(UpdateChecker::SelectUpdate(invalid, "build-70", "windows-x86_64"));
 }
@@ -64,7 +64,7 @@ TEST_CASE("Emulator selects only the matching platform and PGO variant", "[updat
           "macos-arm64.zip", "linux-x86_64.AppImage", "linux-x86_64-pgo.AppImage",
           "linux-aarch64.AppImage", "linux-aarch64-pgo.AppImage"}) {
         release.assets.push_back(
-            "https://github.com/felixharder10-glitch/Emulix/releases/download/build-71/emulator-fx-" +
+            "https://github.com/skysideemu/Emulix/releases/download/build-71/emulator-fx-" +
             std::string{name});
     }
     const auto selected = release.GetPlatformAssets(platform);
@@ -73,7 +73,7 @@ TEST_CASE("Emulator selects only the matching platform and PGO variant", "[updat
           "emulator-fx-" + platform + (platform.starts_with("linux-") ? ".AppImage" : ".zip"));
     CHECK(selected[0].url == "https://github.com");
     CHECK(selected[0].path ==
-          "/felixharder10-glitch/Emulix/releases/download/build-71/" + selected[0].filename);
+          "/skysideemu/Emulix/releases/download/build-71/" + selected[0].filename);
     CHECK_FALSE(release.GetPlatformAssets("android-arm64").size());
     CHECK_FALSE(release.GetPlatformAssets("").size());
 }
@@ -95,10 +95,10 @@ TEST_CASE("Emulator skips releases without its asset and falls back to Linux arc
 TEST_CASE("Emulator does not select Eden or lookalike download URLs", "[updater]") {
     const std::string url = GENERATE(
         "https://github.com/eden-emu/eden/releases/download/build-71/emulator-fx-windows-x86_64.zip",
-        "https://github.com/felixharder10-glitch/Emulix/releases/download/build-70/emulator-fx-windows-x86_64.zip",
-        "https://github.com/felixharder10-glitch/Emulix/releases/download/build-71/"
+        "https://github.com/skysideemu/Emulix/releases/download/build-70/emulator-fx-windows-x86_64.zip",
+        "https://github.com/skysideemu/Emulix/releases/download/build-71/"
         "not-emulator-fx-windows-x86_64.zip",
-        "https://github.com.example.com/felixharder10-glitch/Emulix/releases/download/build-71/"
+        "https://github.com.example.com/skysideemu/Emulix/releases/download/build-71/"
         "emulator-fx-windows-x86_64.zip");
     auto release = MakeRelease("build-71", "emulator-fx-windows-x86_64.zip");
     release.assets = {url};
@@ -110,18 +110,18 @@ TEST_CASE("GitHub failures and invalid JSON produce no releases", "[updater]") {
         GENERATE("", "not JSON", R"({"message":"API rate limit exceeded"})", "null", "[]",
                  R"([{"tag_name":42}])", R"([{"tag_name":"build-71","assets":null}])",
                  R"([{"tag_name":"build-71","draft":true}])");
-    CHECK(Common::Net::Release::ListFromJson(json, "https://api.github.com", "felixharder10-glitch/Emulix")
+    CHECK(Common::Net::Release::ListFromJson(json, "https://api.github.com", "skysideemu/Emulix")
               .empty());
 }
 
 TEST_CASE("GitHub optional fields can be null or missing", "[updater]") {
     const std::string_view json = R"([{"tag_name":"build-71","name":null,"body":null}])";
     const auto releases =
-        Common::Net::Release::ListFromJson(json, "https://api.github.com", "felixharder10-glitch/Emulix");
+        Common::Net::Release::ListFromJson(json, "https://api.github.com", "skysideemu/Emulix");
     REQUIRE(releases.size() == 1);
     CHECK(releases[0].title == "build-71");
     CHECK(releases[0].assets.empty());
-    CHECK(releases[0].html_url == "https://github.com/felixharder10-glitch/Emulix/releases/tag/build-71");
+    CHECK(releases[0].html_url == "https://github.com/skysideemu/Emulix/releases/tag/build-71");
 }
 
 TEST_CASE("Release requests handle HTTP failures without throwing", "[updater]") {
