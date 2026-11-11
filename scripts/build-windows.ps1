@@ -38,12 +38,12 @@ if (-not (Get-Command glslangValidator -ErrorAction SilentlyContinue)) {
 
 if ($Clean -and (Test-Path $BuildDir)) { Remove-Item -Recurse -Force $BuildDir }
 
-$tests = if ($Tests) { "ON" } else { "OFF" }
+$testFlag = if ($Tests) { "ON" } else { "OFF" }
 $flags = @(
     "-S", ".", "-B", $BuildDir, "-G", "Ninja",
     "-DCMAKE_BUILD_TYPE=$Config",
-    "-DYUZU_TESTS=$tests",
-    "-DBUILD_TESTING=$tests",
+    "-DYUZU_TESTS=$testFlag",
+    "-DBUILD_TESTING=$testFlag",
     "-DYUZU_CMD=ON",
     "-DYUZU_USE_BUNDLED_SDL3=ON"
 )
