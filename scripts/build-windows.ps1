@@ -58,8 +58,10 @@ if ($LASTEXITCODE) { throw "configure failed" }
 
 $targets = @("yuzu", "yuzu-cmd")
 if ($Tests) { $targets += @("tests", "update_checker_tests") }
-$par = if ($Jobs -gt 0) { @("--parallel", $Jobs) } else { @("--parallel") }
-& cmake --build $BuildDir --target @targets @par
+# One flat array: `if` unwraps a one-element array to a string, which splats per character.
+$buildArgs = @("--build", $BuildDir, "--target") + $targets + @("--parallel")
+if ($Jobs -gt 0) { $buildArgs += "$Jobs" }
+& cmake @buildArgs
 if ($LASTEXITCODE) { throw "build failed" }
 
 Write-Host "built: $BuildDir\bin\emulator-fx.exe, $BuildDir\bin\emulator-fx-cli.exe"
