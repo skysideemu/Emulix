@@ -1,5 +1,5 @@
 {
-    "_comment": "Rules for tools/project/rebrand.py. Placeholders @key@ come from project/project.json (@repo_slug@ and @ident_upper@ are derived). Order: remove, renames, edits, inserts, replacements, icons.",
+    "_comment": "Rules for tools/project/rebrand.py. Placeholders @key@ come from project/project.json (@repo_slug@ and @ident_upper@ are derived). Order: remove, renames, edits, inserts, drop_sections, replacements, appends, icons.",
 
     "skip_dirs": [".git", ".cache", "build", "build-*", "externals", "LICENSES", ".reuse", "project", "tools/project"],
 
@@ -8,7 +8,6 @@
     "file_exceptions": [
         "README.md",
         "CHANGELOG.md",
-        "AGENTS.md",
         "docs/Maintaining.md",
         "docs/STARFOX_*.md",
         "docs/kirby-white-world.md",
@@ -50,13 +49,27 @@
         {"file": "src/qt_common/qt_common.cpp",
          "from": "fmt::format(\"Lichii Development Build | {}-{}\", branch_name, description);",
          "to": "fmt::format(\"{} | {}-{}\", Common::g_build_name, branch_name, description);"},
+        {"file": "AGENTS.md",
+         "from": "pass them as the env argument of `build-fix.sh`.",
+         "to": "set them in the environment before starting the build under test (see \"Builds\" below)."},
         {"file": "src/yuzu/bootmanager.cpp",
          "from": "setWindowTitle(QStringLiteral(\"Lichii %1 | %2-%3\")",
          "to": "setWindowTitle(QStringLiteral(\"%1 | %2-%3\")"}
     ],
 
     "inserts": [
-        {"file": "CMakeLists.txt", "after": "project(yuzu)", "line": "include(${CMAKE_SOURCE_DIR}/project/emulator.cmake)"}
+        {"file": "CMakeLists.txt", "after": "project(yuzu)", "line": "include(${CMAKE_SOURCE_DIR}/project/emulator.cmake)"},
+        {"file": ".gitattributes", "after": "*.h linguist-language=cpp", "line": "README.md merge=ours"}
+    ],
+
+    "drop_sections": [
+        {"file": "AGENTS.md", "heading": "## Before writing a fix"},
+        {"file": "AGENTS.md", "heading": "## How work is split"},
+        {"file": "AGENTS.md", "heading": "## Builds"}
+    ],
+
+    "appends": [
+        {"file": "AGENTS.md", "source": "project/AGENTS.project.md"}
     ],
 
     "replacements": [

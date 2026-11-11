@@ -84,6 +84,9 @@ def main():
     if git("rev-parse", "--abbrev-ref", "HEAD") != "main":
         sys.exit("sync: run this from branch main")
 
+    # .gitattributes marks files we own outright (README.md) with merge=ours.
+    git("config", "merge.ours.driver", "true")
+
     # b)
     if "upstream" not in git("remote").split():
         git("remote", "add", "upstream", project["upstream_repo"])

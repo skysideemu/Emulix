@@ -9,6 +9,8 @@ uses that list to resolve merge conflicts in favour of upstream).
 
     rebrand.py          apply the rules (idempotent)
     rebrand.py --check  exit 1 if "lichii" is left anywhere outside the exception list
+    rebrand.py --reset  put every path in the manifest back to the upstream commit from
+                        project.json, then apply (needed after changing a name in project.json)
 """
 import argparse
 import fnmatch
@@ -84,6 +86,36 @@ def apply_insert(path, after, line):
     sys.exit(f"rebrand: anchor line not found in {rel(path)}: {after!r}")
 
 
+def drop_section(path, heading):
+    """Remove a Markdown section from its heading line up to the next heading of the same level."""
+    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    level = heading.split(" ", 1)[0]
+    try:
+        start = next(i for i, l in enumerate(lines) if l.rstrip("\n") == heading)
+    except StopIteration:
+        return False
+    end = next((i for i in range(start + 1, len(lines))
+                if lines[i].startswith(level + " ") or (lines[i].startswith("#") and
+                    len(lines[i].split(" ", 1)[0]) < len(level))), len(lines))
+    path.write_text("".join(lines[:start] + lines[end:]), encoding="utf-8")
+    return True
+
+
+def append_file(path, source):
+    """Append source's text once; later runs refresh it in place between marker lines."""
+    begin, end = "<!-- emulator-fx:begin -->\n", "<!-- emulator-fx:end -->\n"
+    text = path.read_text(encoding="utf-8")
+    block = begin + (ROOT / source).read_text(encoding="utf-8") + end
+    if begin in text:
+        new = text[:text.index(begin)] + block + text[text.index(end) + len(end):]
+    else:
+        new = text.rstrip("\n") + "\n\n" + block
+    if new != text:
+        path.write_text(new, encoding="utf-8")
+        return True
+    return False
+
+
 def replace_text(path, replacements, line_exceptions):
     text = path.read_text(encoding="utf-8")
     out = []
@@ -140,6 +172,10 @@ def do_apply(rules, pj):
         if apply_insert(p, i["after"], i["line"]):
             manifest["modified"].append(i["file"])
 
+    for d in rules.get("drop_sections", []):
+        if drop_section(ROOT / d["file"], d["heading"]):
+            manifest["modified"].append(d["file"])
+
     replacements = [(x["from"], fill(x["to"], pj)) for x in rules["replacements"]]
     for p in walk(rules):
         rp = rel(p)
@@ -147,6 +183,11 @@ def do_apply(rules, pj):
             continue
         if replace_text(p, replacements, line_exc):
             manifest["modified"].append(rp)
+
+    # After the replacements, so the appended project text is never rewritten by them.
+    for a in rules.get("appends", []):
+        if append_file(ROOT / a["file"], a["source"]):
+            manifest["modified"].append(a["file"])
 
     for ic in rules["icons"]:
         dst = ROOT / fill(ic["to"], pj)
@@ -170,6 +211,28 @@ def do_apply(rules, pj):
           f"{len(manifest['removed'])} removed, {len(manifest['created'])} created (cumulative)")
 
 
+def do_reset():
+    import subprocess
+    commit = json.loads((ROOT / "project/project.json").read_text(encoding="utf-8"))["upstream_commit"]
+    m = json.loads((ROOT / "project/rebrand-manifest.json").read_text(encoding="utf-8"))
+
+    def in_upstream(path):
+        return subprocess.run(["git", "cat-file", "-e", f"{commit}:{path}"], cwd=ROOT,
+                              capture_output=True).returncode == 0
+
+    restore = set(m["modified"]) | set(m["removed"]) | {old for old, _ in m["renamed"]}
+    drop = set(m["created"]) | {new for _, new in m["renamed"]}
+    for path in sorted(drop - restore):
+        p = ROOT / path
+        if p.is_dir():
+            shutil.rmtree(p)
+        elif p.exists():
+            p.unlink()
+    for path in sorted(p for p in restore if in_upstream(p)):
+        subprocess.run(["git", "checkout", commit, "--", path], cwd=ROOT, check=True)
+    (ROOT / "project/rebrand-manifest.json").unlink()
+
+
 def do_check(rules):
     hits = []
     for p in walk(rules):
@@ -178,8 +241,10 @@ def do_check(rules):
             hits.append(f"{rp}: (path)")
         if matches_any(rp, rules["file_exceptions"]) or not is_text(p):
             continue
+        inside = False  # text appended from project/ (skipped there too) is ours
         for n, line in enumerate(p.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
-            if LEFTOVER.search(line) and not any(e in line for e in rules["line_exceptions"]):
+            inside = (inside or line == "<!-- emulator-fx:begin -->") and line != "<!-- emulator-fx:end -->"
+            if not inside and LEFTOVER.search(line) and not any(e in line for e in rules["line_exceptions"]):
                 hits.append(f"{rp}:{n}: {line.strip()[:120]}")
     for h in hits:
         print(h)
@@ -190,10 +255,13 @@ def do_check(rules):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--check", action="store_true", help="only look for leftover 'lichii'")
+    ap.add_argument("--reset", action="store_true", help="restore upstream state of touched files, then apply")
     args = ap.parse_args()
     rules = json.loads((ROOT / "project/rebrand-rules.json").read_text(encoding="utf-8"))
     if args.check:
         sys.exit(do_check(rules))
+    if args.reset:
+        do_reset()
     do_apply(rules, load_project())
 
 
