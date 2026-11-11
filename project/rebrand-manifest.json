@@ -3,7 +3,6 @@
         ".gitattributes",
         ".github/ISSUE_TEMPLATE/feature_request.yml",
         ".github/ISSUE_TEMPLATE/ui_bug.yml",
-        ".github/workflows/release-binaries.yml",
         "AGENTS.md",
         "CMakeLists.txt",
         "CMakeModules/GenerateSCMRev.cmake",

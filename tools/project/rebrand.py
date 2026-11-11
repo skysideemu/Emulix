@@ -229,7 +229,7 @@ def do_reset():
         elif p.exists():
             p.unlink()
     for path in sorted(p for p in restore if in_upstream(p)):
-        subprocess.run(["git", "checkout", commit, "--", path], cwd=ROOT, check=True)
+        subprocess.run(["git", "restore", f"--source={commit}", "--worktree", "--", path], cwd=ROOT, check=True)
     (ROOT / "project/rebrand-manifest.json").unlink()
 
 
