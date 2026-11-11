@@ -1,0 +1,105 @@
+# SPDX-FileCopyrightText: Copyright 2026 Emulator contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Tag v<MAJOR.MINOR.PATCH> (tools/project/bump-version.py creates it) -> Windows x64 build ->
+# draft GitHub release with emulator-fx-windows-x86_64.zip. Publishing the draft is a manual step.
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows x64
+    runs-on: windows-2022
+    env:
+      SCCACHE_DIR: ${{ github.workspace }}/.sccache
+      SCCACHE_CACHE_SIZE: 3G
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check version matches tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "v$(tr -d '[:space:]' < VERSION)" = "${GITHUB_REF_NAME}" \
+            || { echo "VERSION=$(cat VERSION) but tag is ${GITHUB_REF_NAME}"; exit 1; }
+          python -I tools/project/rebrand.py --check
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          modules: qtcharts
+          cache: true
+
+      - name: Install sccache
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'sccache.zip'
+          Invoke-WebRequest -OutFile $zip https://github.com/mozilla/sccache/releases/download/v0.19.0/sccache-v0.19.0-x86_64-pc-windows-msvc.zip
+          Expand-Archive $zip -DestinationPath (Join-Path $env:RUNNER_TEMP 'sccache')
+          (Get-ChildItem -Recurse -Filter sccache.exe (Join-Path $env:RUNNER_TEMP 'sccache')).DirectoryName | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
+      - name: Install Vulkan SDK
+        shell: pwsh
+        run: ./tools/windows/install-vulkan-sdk.ps1
+
+      - name: Restore caches
+        uses: actions/cache@v5
+        with:
+          path: |
+            .cache/cpm
+            .sccache
+          key: windows-release-${{ hashFiles('cpmfile.json', 'CMakeLists.txt') }}-${{ github.sha }}
+          restore-keys: |
+            windows-release-${{ hashFiles('cpmfile.json', 'CMakeLists.txt') }}-
+            windows-release-
+
+      - name: Build
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -QtDir $env:QT_ROOT_DIR
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $bin = "build/windows/bin"
+          foreach ($exe in 'emulator-fx.exe', 'emulator-fx-cli.exe') {
+            if (-not (Test-Path "$bin/$exe")) { throw "$exe was not produced" }
+          }
+          windeployqt --release --no-translations "$bin/emulator-fx.exe"
+          Remove-Item -Recurse -Force "$bin/*.pdb" -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory dist-out | Out-Null
+          Compress-Archive -Path "$bin/*" -DestinationPath "dist-out/emulator-fx-windows-x86_64.zip"
+          Get-ChildItem dist-out
+
+      - name: Release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=$(python -c "import json;print(json.load(open('project/project.json'))['upstream_commit'][:7])")
+          {
+            echo "Emulator ${GITHUB_REF_NAME} (Basis: Fritchii nx2-${base})"
+            echo
+            # The CHANGELOG section for this version, if there is one.
+            awk -v v="## ${GITHUB_REF_NAME}" '$0 ~ "^"v {p=1; next} /^## / {p=0} p' CHANGELOG.md
+          } > notes.md
+          cat notes.md
+
+      - name: Draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist-out/* \
+            --repo "${GITHUB_REPOSITORY}" --verify-tag --draft \
+            --title "Emulator ${GITHUB_REF_NAME}" --notes-file notes.md

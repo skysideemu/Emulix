@@ -1,0 +1,96 @@
+# SPDX-FileCopyrightText: Copyright 2026 Emulator contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Every push: rebrand check (seconds) and a Windows x64 build with unit tests (long; a
+# private repository pays Windows minutes at 2x, so docs-only pushes skip the build).
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rebrand-check:
+    name: rebrand --check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 -I tools/project/rebrand.py --check
+      - name: rebrand is idempotent
+        run: |
+          python3 -I tools/project/rebrand.py
+          git status --porcelain
+          test -z "$(git status --porcelain)"
+
+  windows:
+    name: Windows x64 build + tests
+    needs: rebrand-check
+    runs-on: windows-2022
+    env:
+      SCCACHE_DIR: ${{ github.workspace }}/.sccache
+      SCCACHE_CACHE_SIZE: 3G
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Skip when only docs changed
+        id: changes
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            if git diff --quiet "${{ github.event.before }}" "${{ github.sha }}" -- . ':!*.md' ':!docs' ':!.github/ISSUE_TEMPLATE' 2>/dev/null; then
+              echo "build=false" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+          fi
+          echo "build=true" >> "$GITHUB_OUTPUT"
+
+      - if: steps.changes.outputs.build == 'true'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - if: steps.changes.outputs.build == 'true'
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          modules: qtcharts
+          cache: true
+
+      - name: Install sccache
+        if: steps.changes.outputs.build == 'true'
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'sccache.zip'
+          Invoke-WebRequest -OutFile $zip https://github.com/mozilla/sccache/releases/download/v0.19.0/sccache-v0.19.0-x86_64-pc-windows-msvc.zip
+          Expand-Archive $zip -DestinationPath (Join-Path $env:RUNNER_TEMP 'sccache')
+          (Get-ChildItem -Recurse -Filter sccache.exe (Join-Path $env:RUNNER_TEMP 'sccache')).DirectoryName | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
+      - name: Install Vulkan SDK
+        if: steps.changes.outputs.build == 'true'
+        shell: pwsh
+        run: ./tools/windows/install-vulkan-sdk.ps1
+
+      - name: Restore caches
+        if: steps.changes.outputs.build == 'true'
+        uses: actions/cache@v5
+        with:
+          path: |
+            .cache/cpm
+            .sccache
+          key: windows-ci-${{ hashFiles('cpmfile.json', 'CMakeLists.txt') }}-${{ github.sha }}
+          restore-keys: |
+            windows-ci-${{ hashFiles('cpmfile.json', 'CMakeLists.txt') }}-
+            windows-ci-
+
+      - name: Build and test
+        if: steps.changes.outputs.build == 'true'
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -QtDir $env:QT_ROOT_DIR -Tests
